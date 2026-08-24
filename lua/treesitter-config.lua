@@ -1,0 +1,11 @@
+-- require'nvim-treesitter.configs'.setup {
+--   -- A list of parser names, or "all"
+--     ensure_installed = { "python", "bash" , "lua", "markdown", "latex", "cpp", "sql"},
+--
+--     highlight = {
+--        enable = true,
+--        additional_vim_regex_highlighting = false,
+--     },
+-- } 
+--
+-- require('nvim-treesitter').install { 'python', 'bash', 'cpp', 'sql' }
