@@ -59,10 +59,10 @@ require('snip-config')
 require('todo-comments').setup()
 require('fugitive')
 
--- Save and restart
-vim.keymap.set("n", "<leader>r", "<cmd>write | restart<cr>", { 
-  desc = "Save file and restart Neovim" 
-})
+-- -- Save and restart
+-- vim.keymap.set("n", "<leader>restart", "<cmd>write | restart<cr>", { 
+--   desc = "Save file and restart Neovim" 
+-- })
 
 -- Treesitter
 vim.api.nvim_create_autocmd('FileType', {
@@ -72,6 +72,46 @@ vim.api.nvim_create_autocmd('FileType', {
 
 -- LSP
 vim.lsp.enable({"pyright", "clangd"})
+
+-- -- 1. Helper function to check if a command exists on the system
+-- local function has_executable(cmd)
+--   return vim.fn.executable(cmd) == 1
+-- end
+--
+-- -- 2. Define the configuration for Pyright (disabling its linter conflicts)
+-- vim.lsp.config.pyright = {
+--   cmd = { "pyright-langserver", "--standard" },
+--   root_markers = { "pyproject.toml", "setup.py", ".git" },
+--   settings = {
+--     pyright = {
+--       -- Disable Pyright's import organizer because Ruff handles it perfectly
+--       disableOrganizeImports = true,
+--     },
+--     python = {
+--       analysis = {
+--         -- Prevents Pyright from fighting Ruff over styling/syntax diagnostics
+--         ignore = { "*" },
+--       },
+--     },
+--   },
+-- }
+--
+-- -- 3. Dynamic Execution Logic
+-- if has_executable("uv") then
+--   -- UV IS PRESENT: Configure Ruff & enable BOTH for an IDE-like experience
+--   vim.lsp.config.ruff = {
+--     cmd = { "uv", "run", "ruff", "server" },
+--     root_markers = { "pyproject.toml", "ruff.toml", ".git" },
+--   }
+--
+--   -- Launch both servers to work alongside each other
+--   vim.lsp.enable("ruff")
+--   vim.lsp.enable("pyright")
+--
+-- else
+--   -- UV IS MISSING: Only enable Pyright as a global fallback server
+--   vim.lsp.enable("pyright")
+-- end
 
 -- Terminal mode settings
 vim.keymap.set('t', '<C-[>', '<C-\\><C-n>', { desc = 'Escape terminal mode' })
@@ -93,6 +133,39 @@ vim.keymap.set('n', '<leader>ot', function()
     print("No active terminal found")
 end, { desc = 'Open existing terminal buffer' })
 
+function find_terminal ()
+    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.bo[bufnr].buftype == 'terminal' then
+	    return bufnr
+	end
+    end
+    print("No active terminal found")
+    return nil
+end
+
+
+vim.keymap.set('n', '<leader>black', function()
+    local bufnr = find_terminal()
+    if bufnr == nil then
+	return
+    end
+    vim.cmd('write')
+    local fname = vim.api.nvim_buf_get_name(0)
+    local job_id = vim.b[bufnr].terminal_job_id
+    vim.api.nvim_chan_send(job_id, "uvx black " .. fname .. "\r")
+end)
+
+vim.keymap.set('n', '<leader>isort', function()
+    local bufnr = find_terminal()
+    if bufnr == nil then
+	return
+    end
+    vim.cmd('write')
+    local fname = vim.api.nvim_buf_get_name(0)
+    local job_id = vim.b[bufnr].terminal_job_id
+    vim.api.nvim_chan_send(job_id, "uvx isort " .. fname .. "\r")
+end)
+
 vim.keymap.set('n', '<leader>p', function()
     -- Find the first available terminal buffer
     for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
@@ -105,12 +178,12 @@ vim.keymap.set('n', '<leader>p', function()
 	    local ftype = vim.bo[0].filetype
             local job_id = vim.b[bufnr].terminal_job_id
             if job_id then
-		vim.api.nvim_chan_send(job_id, "cd " .. buf_dir .. "\r")
+		-- vim.api.nvim_chan_send(job_id, "cd " .. buf_dir .. "\r")
 		if ftype == "python" then
-		    vim.api.nvim_chan_send(job_id, "python " .. fname .. "\r")
+		    vim.api.nvim_chan_send(job_id, "uv run " .. fname .. "\r")
 		    return
 		elseif ftype == "sh" then
-		    vim.api.nvim_chan_send(job_id, "bash " .. fname .. "\r")
+		    vim.api.nvim_chan_send(job_id, "./" .. fname .. "\r")
 		    return
 		else
 		    print("Non-implemented file type " .. ftype)
