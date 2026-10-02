@@ -14,6 +14,10 @@ vim.opt.colorcolumn = '80'
 vim.opt.mouse = 'a'
 vim.opt.splitright = true
 vim.diagnostic.config({ virtual_text = true })
+vim.cmd[[
+    set title
+    let &titlestring = (exists('$SSH_TTY') ? 'SSH ' : '') .. '%{fnamemodify(getcwd(),":t")}'
+]]
 
 -- Plugins
 vim.pack.add({
@@ -59,11 +63,6 @@ require('snip-config')
 require('todo-comments').setup()
 require('fugitive')
 
--- -- Save and restart
--- vim.keymap.set("n", "<leader>restart", "<cmd>write | restart<cr>", { 
---   desc = "Save file and restart Neovim" 
--- })
-
 -- Treesitter
 vim.api.nvim_create_autocmd('FileType', {
   pattern = { '<filetype>' },
@@ -71,7 +70,43 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 -- LSP
-vim.lsp.enable({"pyright", "clangd"})
+-- vim.lsp.enable({"pyright", "clangd"})
+vim.lsp.enable({"clangd"})
+
+vim.lsp.config('ruff', {})
+vim.lsp.enable('ruff')
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup('lsp_attach_disable_ruff_hover', { clear = true }),
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if client == nil then
+      return
+    end
+    if client.name == 'ruff' then
+      -- Disable hover in favor of Pyright
+      client.server_capabilities.hoverProvider = false
+    end
+  end,
+  desc = 'LSP: Disable hover capability from Ruff',
+})
+
+vim.lsp.config('pyright', {
+  settings = {
+    pyright = {
+      -- Using Ruff's import organizer
+      disableOrganizeImports = true,
+    },
+    python = {
+      analysis = {
+        -- Ignore all files for analysis to exclusively use Ruff for linting
+        ignore = { '*' },
+      },
+    },
+  },
+})
+
+vim.lsp.enable('pyright')
 
 -- -- 1. Helper function to check if a command exists on the system
 -- local function has_executable(cmd)
@@ -144,7 +179,7 @@ function find_terminal ()
 end
 
 
-vim.keymap.set('n', '<leader>black', function()
+vim.keymap.set('n', '<leader>fblack', function()
     local bufnr = find_terminal()
     if bufnr == nil then
 	return
@@ -155,7 +190,19 @@ vim.keymap.set('n', '<leader>black', function()
     vim.api.nvim_chan_send(job_id, "uvx black " .. fname .. "\r")
 end)
 
-vim.keymap.set('n', '<leader>isort', function()
+vim.keymap.set('n', '<leader>fruff', function()
+    local bufnr = find_terminal()
+    if bufnr == nil then
+	return
+    end
+    vim.cmd('write')
+    local fname = vim.api.nvim_buf_get_name(0)
+    local job_id = vim.b[bufnr].terminal_job_id
+    vim.api.nvim_chan_send(job_id, "uv run ruff format " .. fname .. "\r")
+end)
+
+
+vim.keymap.set('n', '<leader>fisort', function()
     local bufnr = find_terminal()
     if bufnr == nil then
 	return
@@ -164,6 +211,17 @@ vim.keymap.set('n', '<leader>isort', function()
     local fname = vim.api.nvim_buf_get_name(0)
     local job_id = vim.b[bufnr].terminal_job_id
     vim.api.nvim_chan_send(job_id, "uvx isort " .. fname .. "\r")
+end)
+
+vim.keymap.set('n', '<leader>fpretty', function()
+    local bufnr = find_terminal()
+    if bufnr == nil then
+	return
+    end
+    vim.cmd('write')
+    local fname = vim.api.nvim_buf_get_name(0)
+    local job_id = vim.b[bufnr].terminal_job_id
+    vim.api.nvim_chan_send(job_id, "npx prettier --write " .. fname .. "\r")
 end)
 
 vim.keymap.set('n', '<leader>p', function()
