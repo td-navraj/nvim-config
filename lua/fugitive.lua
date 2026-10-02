@@ -9,4 +9,5 @@ end, { desc = "Git add file to staging area" })
 
 vim.keymap.set('n', '<leader>gc', function()
     vim.cmd('Git commit --verbose')
+    vim.cmd('wincmd T')
 end, { desc = "Git commit" })
