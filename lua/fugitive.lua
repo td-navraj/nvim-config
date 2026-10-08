@@ -5,6 +5,8 @@ end, { desc = "Open git diff in a new tab" })
 
 vim.keymap.set('n', '<leader>ga', function()
     vim.cmd('Git add %')
+    local fname = vim.api.nvim_buf_get_name(0)
+    print("Added .. ", fname, " to the staging area")
 end, { desc = "Git add file to staging area" })
 
 vim.keymap.set('n', '<leader>gc', function()
